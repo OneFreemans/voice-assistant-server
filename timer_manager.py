@@ -2,11 +2,10 @@ import threading
 import asyncio
 from datetime import datetime, timedelta
 
-# Словарь для хранения задач: user_id -> список задач
 user_tasks = {}
 
 
-def add_timer(user_id: int, seconds: int, message: str, bot, chat_id: int):
+def add_timer(user_id: int, seconds: int, message: str, bot, chat_id: int, loop: asyncio.AbstractEventLoop):
     """Добавляет таймер для пользователя"""
     if user_id not in user_tasks:
         user_tasks[user_id] = []
@@ -15,7 +14,8 @@ def add_timer(user_id: int, seconds: int, message: str, bot, chat_id: int):
         "end_time": datetime.now() + timedelta(seconds=seconds),
         "message": message,
         "bot": bot,
-        "chat_id": chat_id
+        "chat_id": chat_id,
+        "loop": loop
     }
     user_tasks[user_id].append(task)
 
@@ -30,15 +30,12 @@ def _check_timer(user_id: int, task: dict):
         import time
         time.sleep(wait_seconds)
 
-    # Отправляем сообщение (через asyncio)
+    # Отправляем сообщение через главный event loop
     try:
-        # Создаём новый event loop для потока
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        loop.run_until_complete(
-            task["bot"].send_message(chat_id=task["chat_id"], text=f"⏰ {task['message']}")
+        asyncio.run_coroutine_threadsafe(
+            task["bot"].send_message(chat_id=task["chat_id"], text=f"⏰ {task['message']}"),
+            task["loop"]
         )
-        loop.close()
     except Exception as e:
         print(f"Ошибка отправки: {e}")
 

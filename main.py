@@ -9,6 +9,8 @@ from functions import (
 )
 from timer_manager import add_timer
 import config
+import asyncio
+
 
 # Настройка логирования
 logging.basicConfig(
@@ -33,7 +35,8 @@ COMMANDS = {
 }
 
 
-def process_command_text(text: str, bot=None, chat_id=None, user_id=None) -> str:
+def process_command_text(text: str, bot=None, chat_id=None, user_id=None, loop=None) -> str:
+    """Обрабатывает текст команды и возвращает результат (без микрофона)"""
     text_lower = text.lower()
     text_split = text_lower.split(" ")
 
@@ -48,19 +51,28 @@ def process_command_text(text: str, bot=None, chat_id=None, user_id=None) -> str
         time_value = text_split[1]
         time_unit = text_split[2]
 
-        # Проверяем формат времени
         if time_unit in config.MINUTE_FORMATS:
             seconds = int(time_value) * 60
             message = my_timer(time_value, time_unit)
-            if bot and chat_id and user_id:
-                add_timer(user_id, seconds, "Время вышло! ⏰", bot, chat_id)
-            return message  # ← ВАЖНО: возвращаем сообщение
+            if bot and chat_id and user_id and loop:
+                add_timer(user_id, seconds, "Время вышло! ⏰", bot, chat_id, loop)
+            return message
+
         elif time_unit in config.HOUR_FORMATS:
             seconds = int(time_value) * 60 * 60
             message = my_timer(time_value, time_unit)
-            if bot and chat_id and user_id:
-                add_timer(user_id, seconds, "Время вышло! ⏰", bot, chat_id)
-            return message  # ← ВАЖНО: возвращаем сообщение
+            if bot and chat_id and user_id and loop:
+                add_timer(user_id, seconds, "Время вышло! ⏰", bot, chat_id, loop)
+            return message
+
+        elif time_unit in config.SECOND_FORMATS:
+            seconds = int(time_value)
+            if seconds < 10:
+                return f"❌ Минимум 10 секунд."
+            message = my_timer(time_value, time_unit)
+            if bot and chat_id and user_id and loop:
+                add_timer(user_id, seconds, "Время вышло! ⏰", bot, chat_id, loop)
+            return message
         else:
             return f"❌ Неизвестный формат: {time_unit}"
 
@@ -87,15 +99,16 @@ def process_command_text(text: str, bot=None, chat_id=None, user_id=None) -> str
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Отправляет приветственное сообщение при команде /start"""
     await update.message.reply_text(
-        "👋 Привет! Я ассистент Oleg.\n\n"
+        "👋 Привет! Я ассистент Олег.\n\n"
         "📝 Отправь мне команду, например:\n\n"
         "- погода\n"
-        "- курс доллар\n"
+        "- курс доллар\евро\n"
         "- таймер 1 минута\n"
         "- расскажи анекдот\n"
         "- сколько время\n"
         "- какой сегодня день\n"
         "- включи\выключи свет в комнате\n"
+        "- сердце 1\n\n"
         "И я отвечу!"
     )
 
@@ -148,7 +161,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         user_text,
         bot=context.bot,
         chat_id=update.effective_chat.id,
-        user_id=user_id
+        user_id=user_id,
+        loop=asyncio.get_running_loop()
     )
     await update.message.reply_text(response)
 

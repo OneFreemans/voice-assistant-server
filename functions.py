@@ -4,8 +4,6 @@ from utils.formatters import rub, cop,heart, min as format_min
 import datetime as dt
 
 
-
-
 # ------------------------------------таймер-------------------------------------
 def my_timer(time_timer: str, format_timer: str) -> str:
     """
@@ -15,13 +13,14 @@ def my_timer(time_timer: str, format_timer: str) -> str:
 
     formatted_min = format_min(time_timer)
 
-    if format_timer in config.MINUTE_FORMATS:
-        seconds = int(time_timer) * 60
-        return f"⏳ Таймер запущен на {time_timer} {formatted_min}. Я напомню через {seconds} секунд."
+    if format_timer in config.SECOND_FORMATS:
+        return f"⏳ Таймер запущен на {time_timer} {format_timer}."
+
+    elif format_timer in config.MINUTE_FORMATS:
+        return f"⏳ Таймер запущен на {time_timer} {formatted_min}."
 
     elif format_timer in config.HOUR_FORMATS:
-        seconds = int(time_timer) * 60 * 60
-        return f"⏳ Таймер запущен на {time_timer} {format_timer}. Я напомню через {seconds} секунд."
+        return f"⏳ Таймер запущен на {time_timer} {format_timer}."
 
     return f"❌ Неизвестный формат времени: {format_timer}"
 

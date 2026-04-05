@@ -50,3 +50,8 @@ def min(count: int | str) -> str:
 def heart(count: int) -> str:
     """Возвращает правильную форму слова 'сердце' для числа count."""
     return _format(count, 'сердце', 'сердца', 'сердец')
+
+
+def second(count: int) -> str:
+    """Возвращает правильную форму слова 'секунда' для числа count."""
+    return _format(count, 'секунда', 'секунды', 'секунд')
