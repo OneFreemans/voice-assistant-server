@@ -4,8 +4,8 @@ from telegram.ext import Application, CommandHandler, MessageHandler, filters, C
 from smart_home import control_device
 from secrets import TELEGRAM_TOKEN, SMART_HOME_PASSWORD
 from functions import (
-    my_timer, time_kem, prank, what_weather,
-    what_dey, print_heart, currency
+    my_timer, time_kem, prank, what_weather, what_dey,
+    print_heart, currency, calculation_materials
 )
 from timer_manager import add_timer
 import config
@@ -32,6 +32,7 @@ COMMANDS = {
     "сердце": (print_heart, 1, False),
     "включи": (control_device, 1, False),
     "выключи": (control_device, 1, False),
+    "рассчитай": (calculation_materials, 1, False),
 }
 
 
@@ -45,6 +46,15 @@ def process_command_text(text: str, bot=None, chat_id=None, user_id=None, loop=N
         device = " ".join(text_split[1:])
         action = text_split[0]
         return control_device(device, action)
+
+    # Обработка команды "рассчитай"
+    if text_split[0] == "рассчитай" and len(text_split) >= 2:
+        mat = text_split[1]  # "стяжку" или "наливной"
+        # Всё остальное — это входные данные
+        input_text = " ".join(text_split[2:]) if len(text_split) > 2 else ""
+        if not input_text:
+            return "❌ Укажите параметры. Пример: рассчитай стяжку площадь 25 слой 5"
+        return calculation_materials(mat, input_text)
 
     # Обработка таймера
     if text_split[0] == "таймер" and len(text_split) >= 3:
@@ -108,6 +118,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         "- сколько время\n"
         "- какой сегодня день\n"
         "- включи\выключи свет в комнате\n"
+        "- рассчитай стяжку\наливной 'площадь м*2' 'толщина см'\n"
+        "*пример: рассчитай стяжку 40 2.5\n"
         "- сердце 1\n\n"
         "И я отвечу!"
     )

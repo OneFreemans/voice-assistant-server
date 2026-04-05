@@ -1,7 +1,55 @@
 import time, requests, random, config
 from utils.anecdote import an
-from utils.formatters import rub, cop,heart, min as format_min
+from utils.formatters import rub, cop, heart, mesh, min as format_min
 import datetime as dt
+
+
+def calculation_materials(mat: str, text_input: str) -> str:
+    """
+    Рассчитывает материалы для стяжки или наливного пола на основе текстового ввода.
+
+    Args:
+        mat: Тип материала ("стяжку" или "наливной").
+        text_input: Текст от пользователя, например "площадь 25 слой 5".
+
+    Returns:
+        Строка с результатом расчёта или сообщение об ошибке.
+    """
+    parts = text_input.lower().split(" ")
+
+    # Ищем числа в тексте (поддержка разных форматов)
+    numbers = []
+    for part in parts:
+        try:
+            numbers.append(float(part))
+        except ValueError:
+            pass
+
+    if len(numbers) < 2:
+        return "❌ Не удалось распознать числа. Пример: площадь 25 слой 5"
+
+    area = numbers[0]
+    thickness = numbers[1]
+
+    if area <= 0 or thickness <= 0:
+        return "❌ Площадь и слой должны быть положительными числами."
+
+    if mat not in config.MATERIALS:
+        return f"❌ Материал '{mat}' не найден в базе данных"
+
+    kf, kgm, price_m, price_r = map(int, config.MATERIALS[mat].split(", "))
+    total_kg = thickness * kf * area / kgm
+    total_cost_material = total_kg * price_m
+    total_cost_work = area * price_r
+
+    bags = mesh(int(total_kg))
+    cost_material = rub(int(total_cost_material))
+    cost_work = rub(int(total_cost_work))
+
+    return (f"📊 **Результат расчёта:**\n\n"
+            f"📦 Понадобится: {int(total_kg)} {bags}\n"
+            f"💰 Материал: {int(total_cost_material)} {cost_material}\n"
+            f"🔨 Работа: {int(total_cost_work)} {cost_work}")
 
 
 # ------------------------------------таймер-------------------------------------
@@ -9,8 +57,6 @@ def my_timer(time_timer: str, format_timer: str) -> str:
     """
     Возвращает сообщение о запуске таймера (без ожидания).
     """
-    from utils.formatters import min as format_min
-
     formatted_min = format_min(time_timer)
 
     if format_timer in config.SECOND_FORMATS:
