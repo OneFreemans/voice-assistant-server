@@ -2,7 +2,7 @@ import logging
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 from smart_home import control_device
-from secrets import TELEGRAM_TOKEN, SMART_HOME_PASSWORD
+from secrets import TELEGRAM_TOKEN, SMART_HOME_PASSWORD, DEEPSEEK_API_KEY
 from functions import (
     my_timer, time_kem, prank, what_weather, what_dey,
     print_heart, currency, calculation_materials
@@ -10,6 +10,7 @@ from functions import (
 from timer_manager import add_timer
 import config
 import asyncio
+import aiohttp
 
 
 # Настройка логирования
@@ -22,6 +23,7 @@ logger = logging.getLogger(__name__)
 # Словарь для хранения авторизованных пользователей
 authorized_users = {}
 
+# словарь для хранения команд
 COMMANDS = {
     "таймер": (my_timer, 2, True),
     "сколько время": (time_kem, 0, False),
@@ -34,6 +36,38 @@ COMMANDS = {
     "выключи": (control_device, 1, False),
     "рассчитай": (calculation_materials, 1, False),
 }
+
+
+async def get_ai_response(user_message: str) -> str:
+    """Отправляет запрос к DeepSeek API и возвращает ответ."""
+    url = "https://api.deepseek.com/v1/chat/completions"
+    headers = {
+        "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "model": "deepseek-chat",  # Можно использовать "deepseek-reasoner" для более сложных задач
+        "messages": [
+            {"role": "system", "content": "Ты — полезный, вежливый и дружелюбный ассистент по имени Олег. Отвечай на русском языке."},
+            {"role": "user", "content": user_message}
+        ],
+        "temperature": 0.7
+    }
+
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.post(url, headers=headers, json=payload) as response:
+                if response.status == 200:
+                    data = await response.json()
+                    # Извлекаем текст ответа
+                    return data['choices'][0]['message']['content']
+                else:
+                    error_text = await response.text()
+                    print(f"Ошибка DeepSeek API: {response.status} - {error_text}")
+                    return "❌ Извини, я не могу ответить сейчас. Попробуй позже."
+    except Exception as e:
+        print(f"Ошибка соединения с DeepSeek: {e}")
+        return "❌ Не удалось подключиться к нейросети. Проверь интернет или API-ключ."
 
 
 def process_command_text(text: str, bot=None, chat_id=None, user_id=None, loop=None) -> str:
@@ -49,7 +83,7 @@ def process_command_text(text: str, bot=None, chat_id=None, user_id=None, loop=N
 
     # Обработка команды "рассчитай"
     if text_split[0] == "рассчитай" and len(text_split) >= 2:
-        mat = text_split[1]  # "стяжку" или "наливной"
+        mat = text_split[1]
         # Всё остальное — это входные данные
         input_text = " ".join(text_split[2:]) if len(text_split) > 2 else ""
         if not input_text:
@@ -118,10 +152,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         "- сколько время\n"
         "- какой сегодня день\n"
         "- включи\выключи свет в комнате\n"
-        "- рассчитай стяжку\наливной 'площадь м*2' 'толщина см'\n"
+        "- рассчитай стяжку\наливной 'площадь м²' 'толщина см'\n"
         "*пример: рассчитай стяжку 40 2.5\n"
         "- сердце 1\n\n"
-        "И я отвечу!"
+        "*Так же можете пообщаться с мной на любые темы"
     )
 
 
@@ -148,35 +182,42 @@ async def handle_auth(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
 
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Обрабатывает текстовые сообщения"""
     user_text = update.message.text
     user_id = update.effective_user.id
 
-    # Если ожидаем авторизацию
+    # 1. Проверка на авторизацию для умного дома
     if context.user_data.get('awaiting_auth'):
         await handle_auth(update, context)
         return
 
+    # 2. Проверка, является ли сообщение командой из COMMANDS
+    is_known_command = False
+    for cmd in COMMANDS.keys():
+        if user_text.lower().startswith(cmd):
+            is_known_command = True
+            break
+
     logger.info(f"Пользователь {user_id}: {user_text}")
 
-    # Проверяем, относится ли команда к умному дому
-    is_smart_home_command = any(trigger in user_text.lower() for trigger in ["включи", "выключи"])
+    # 3. Логика обработки
+    # Если это команда умного дома и пользователь НЕ авторизован
+    if any(trigger in user_text.lower() for trigger in ["включи", "выключи"]):
+        if not authorized_users.get(user_id):
+            await update.message.reply_text("🔒 Управление умным домом требует авторизации.\nИспользуйте команду /auth.")
+            return
+        response = process_command_text(user_text)
+        await update.message.reply_text(response)
 
-    if is_smart_home_command and not authorized_users.get(user_id):
-        await update.message.reply_text(
-            "🔒 Управление умным домом требует авторизации.\n"
-            "Используйте команду /auth для ввода пароля."
-        )
-        return
+    # Если это известная команда (погода, курс и т.д.)
+    elif is_known_command:
+        response = process_command_text(user_text)
+        await update.message.reply_text(response)
 
-    response = process_command_text(
-        user_text,
-        bot=context.bot,
-        chat_id=update.effective_chat.id,
-        user_id=user_id,
-        loop=asyncio.get_running_loop()
-    )
-    await update.message.reply_text(response)
+    # Если это просто сообщение (болталка)
+    else:
+        await update.message.chat.send_action(action="typing")
+        ai_response = await get_ai_response(user_text)
+        await update.message.reply_text(ai_response)
 
 
 def main() -> None:
