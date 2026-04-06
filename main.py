@@ -7,9 +7,9 @@ from functions import (
     my_timer, time_kem, prank, what_weather, what_dey,
     print_heart, currency, calculation_materials
 )
-from timer_manager import add_timer
 import config
 import aiohttp
+import asyncio
 
 
 # Настройка логирования
@@ -45,7 +45,7 @@ async def get_ai_response(user_message: str) -> str:
         "Content-Type": "application/json"
     }
     payload = {
-        "model": "deepseek-chat",  # Можно использовать "deepseek-reasoner" для более сложных задач
+        "model": "deepseek-chat",
         "messages": [
             {"role": "system", "content": "Ты — полезный, вежливый и дружелюбный ассистент по имени Олег. Отвечай на русском языке."},
             {"role": "user", "content": user_message}
@@ -58,19 +58,18 @@ async def get_ai_response(user_message: str) -> str:
             async with session.post(url, headers=headers, json=payload) as response:
                 if response.status == 200:
                     data = await response.json()
-                    # Извлекаем текст ответа
                     return data['choices'][0]['message']['content']
                 else:
                     error_text = await response.text()
-                    print(f"Ошибка DeepSeek API: {response.status} - {error_text}")
+                    logger.error(f"DeepSeek API error: {response.status} - {error_text}")
                     return "❌ Извини, я не могу ответить сейчас. Попробуй позже."
     except Exception as e:
-        print(f"Ошибка соединения с DeepSeek: {e}")
+        logger.error(f"DeepSeek connection error: {e}")
         return "❌ Не удалось подключиться к нейросети. Проверь интернет или API-ключ."
 
 
-def process_command_text(text: str, bot=None, chat_id=None, user_id=None, loop=None) -> str:
-    """Обрабатывает текст команды и возвращает результат (без микрофона)"""
+def process_command_text(text: str, update: Update = None, context: ContextTypes.DEFAULT_TYPE = None) -> str:
+    """Обрабатывает текст команды и возвращает результат"""
     text_lower = text.lower()
     text_split = text_lower.split(" ")
 
@@ -83,7 +82,6 @@ def process_command_text(text: str, bot=None, chat_id=None, user_id=None, loop=N
     # Обработка команды "рассчитай"
     if text_split[0] == "рассчитай" and len(text_split) >= 2:
         mat = text_split[1]
-        # Всё остальное — это входные данные
         input_text = " ".join(text_split[2:]) if len(text_split) > 2 else ""
         if not input_text:
             return "❌ Укажите параметры. Пример: рассчитай стяжку площадь 25 слой 5"
@@ -96,28 +94,26 @@ def process_command_text(text: str, bot=None, chat_id=None, user_id=None, loop=N
 
         if time_unit in config.MINUTE_FORMATS:
             seconds = int(time_value) * 60
-            message = my_timer(time_value, time_unit)
-            if bot and chat_id and user_id and loop:
-                add_timer(user_id, seconds, "Время вышло! ⏰", bot, chat_id, loop)
-            return message
-
         elif time_unit in config.HOUR_FORMATS:
             seconds = int(time_value) * 60 * 60
-            message = my_timer(time_value, time_unit)
-            if bot and chat_id and user_id and loop:
-                add_timer(user_id, seconds, "Время вышло! ⏰", bot, chat_id, loop)
-            return message
-
         elif time_unit in config.SECOND_FORMATS:
             seconds = int(time_value)
             if seconds < 10:
                 return f"❌ Минимум 10 секунд."
-            message = my_timer(time_value, time_unit)
-            if bot and chat_id and user_id and loop:
-                add_timer(user_id, seconds, "Время вышло! ⏰", bot, chat_id, loop)
-            return message
         else:
             return f"❌ Неизвестный формат: {time_unit}"
+
+        message = my_timer(time_value, time_unit)
+
+        # Запускаем таймер в фоне
+        if update and context:
+            async def timer_coro():
+                await asyncio.sleep(seconds)
+                await context.bot.send_message(chat_id=update.effective_chat.id, text="⏰ Время вышло! ⏰")
+
+            asyncio.create_task(timer_coro())
+
+        return message
 
     # Команды с пробелами
     if text_lower in COMMANDS:
@@ -145,13 +141,13 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         "👋 Привет! Я ассистент Олег.\n\n"
         "📝 Отправь мне команду, например:\n\n"
         "- погода\n"
-        "- курс доллар\евро\n"
+        "- курс доллар\\евро\n"
         "- таймер 1 минута\n"
         "- расскажи анекдот\n"
         "- сколько время\n"
         "- какой сегодня день\n"
-        "- включи\выключи свет в комнате\n"
-        "- рассчитай стяжку\наливной 'площадь м²' 'толщина см'\n"
+        "- включи\\выключи свет в комнате\n"
+        "- рассчитай стяжку\\наливной 'площадь м²' 'толщина см'\n"
         "*пример: рассчитай стяжку 40 2.5\n"
         "- сердце 1\n\n"
         "*Так же можете пообщаться с мной на любые темы"
@@ -161,9 +157,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 async def auth(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Начинает процесс авторизации для управления умным домом"""
     context.user_data['awaiting_auth'] = True
-    await update.message.reply_text(
-        "🔐 Введите пароль для управления умным домом:"
-    )
+    await update.message.reply_text("🔐 Введите пароль для управления умным домом:")
 
 
 async def handle_auth(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -184,12 +178,12 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     user_text = update.message.text
     user_id = update.effective_user.id
 
-    # 1. Проверка на авторизацию для умного дома
+    # Проверка на авторизацию для умного дома
     if context.user_data.get('awaiting_auth'):
         await handle_auth(update, context)
         return
 
-    # 2. Проверка, является ли сообщение командой из COMMANDS
+    # Проверка, является ли сообщение командой из COMMANDS
     is_known_command = False
     for cmd in COMMANDS.keys():
         if user_text.lower().startswith(cmd):
@@ -198,18 +192,17 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
     logger.info(f"Пользователь {user_id}: {user_text}")
 
-    # 3. Логика обработки
     # Если это команда умного дома и пользователь НЕ авторизован
     if any(trigger in user_text.lower() for trigger in ["включи", "выключи"]):
         if not authorized_users.get(user_id):
             await update.message.reply_text("🔒 Управление умным домом требует авторизации.\nИспользуйте команду /auth.")
             return
-        response = process_command_text(user_text)
+        response = process_command_text(user_text, update, context)
         await update.message.reply_text(response)
 
     # Если это известная команда (погода, курс и т.д.)
     elif is_known_command:
-        response = process_command_text(user_text)
+        response = process_command_text(user_text, update, context)
         await update.message.reply_text(response)
 
     # Если это просто сообщение (болталка)
