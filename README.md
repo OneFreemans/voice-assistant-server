@@ -87,6 +87,9 @@ docker build -t oleg-telegram-bot .
 ```bash
 docker run -d --name oleg-bot --restart always oleg-telegram-bot
 ```
+
+---
+
 ## 📄 Лицензия
 ```
 MIT
