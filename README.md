@@ -1,6 +1,6 @@
 # Voice Assistant Server
 
-Telegram-бот для голосового ассистента (текстовая версия без микрофона).
+Telegram-бот для голосового ассистента (текстовая версия без микрофона + Docker).
 
 ## Команды
 
@@ -37,14 +37,16 @@ voice-assistant-server/
 │   └── ...
 ├── main.py                     # Основной код бота
 ├── functions.py                # Команды (погода, курс, таймер...)
+├── Dockerfile                  # инструкция для сборки Docker-образа
 ├── smart_home.py               # Управление умным домом
 ├── timer_manager.py            # Асинхронный таймер
 ├── config.py                   # Настройки (форматы, списки)
-├── secrets.py                  # Токены (не в репозитории)
+├── secrets.py                  # Токены (не в репозитории, нужно создать самому)
 ├── utils/
 │   ├── formatters.py           # Склонение слов
 │   ├── anecdote.py             # Список анекдотов
 │   └── ...
+├── .dockerignore               
 ├── requirements.txt
 ├── .gitignore
 └── README.md
@@ -57,9 +59,24 @@ voice-assistant-server/
 2. Создай виртуальное окружение
 3. Установи зависимости: `pip install -r requirements.txt`
 4. Создай `secrets.py` с токенами
+```python
+TELEGRAM_TOKEN = "токен_бота"
+SMART_HOME_PASSWORD = "пароль_для_умного_дома"
+DEEPSEEK_API_KEY = "ключ_deepseek"
+```
 5. Запусти: `python main.py`
 ---
 
+## 🐳 Запуск через Docker
+1. Создай файл `secrets.py` с токенами (как описано выше)
+2. Собери образ:
+```bash
+docker build -t oleg-telegram-bot .
+```
+3. Запусти контейнер:
+```bash
+docker run -d --name oleg-bot --restart always oleg-telegram-bot
+```
 ## Лицензия
 ```
 MIT
