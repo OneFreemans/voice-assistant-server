@@ -49,7 +49,6 @@ voice-assistant-server/
 ├── functions.py                # Команды (погода, курс, таймер...)
 ├── Dockerfile                  # инструкция для сборки Docker-образа
 ├── smart_home.py               # Управление умным домом
-├── timer_manager.py            # Асинхронный таймер
 ├── config.py                   # Настройки (форматы, списки)
 ├── secrets.py                  # Токены (не в репозитории, нужно создать самому)
 ├── utils/
