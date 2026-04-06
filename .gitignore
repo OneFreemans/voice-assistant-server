@@ -6,3 +6,4 @@ secrets.py
 .env
 .idea/
 *.log
+oleg-telegram-bot.tar

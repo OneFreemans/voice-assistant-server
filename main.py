@@ -9,7 +9,6 @@ from functions import (
 )
 from timer_manager import add_timer
 import config
-import asyncio
 import aiohttp
 
 
