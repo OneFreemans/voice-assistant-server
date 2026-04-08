@@ -2,6 +2,7 @@
 .venv1/
 __pycache__/
 *.pyc
+config_secrets.py
 secrets.py
 .env
 .idea/

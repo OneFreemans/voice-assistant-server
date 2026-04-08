@@ -50,7 +50,7 @@ voice-assistant-server/
 ├── Dockerfile                  # инструкция для сборки Docker-образа
 ├── smart_home.py               # Управление умным домом
 ├── config.py                   # Настройки (форматы, списки)
-├── secrets.py                  # Токены (не в репозитории, нужно создать самому)
+├── config_secrets.py                  # Токены (не в репозитории, нужно создать самому)
 ├── utils/
 │   ├── formatters.py           # Склонение слов
 │   ├── anecdote.py             # Список анекдотов
@@ -67,7 +67,7 @@ voice-assistant-server/
 1. Клонируй репозиторий
 2. Создай виртуальное окружение
 3. Установи зависимости: `pip install -r requirements.txt`
-4. Создай `secrets.py` с токенами
+4. Создай `config_secrets.py` с токенами
 ```python
 TELEGRAM_TOKEN = "токен_бота"
 SMART_HOME_PASSWORD = "пароль_для_умного_дома"
@@ -77,7 +77,7 @@ DEEPSEEK_API_KEY = "ключ_deepseek"
 ---
 
 ## 🐳 Запуск через Docker
-1. Создай файл `secrets.py` с токенами (как описано выше)
+1. Создай файл `config_secrets.py` с токенами (как описано выше)
 2. Собери образ:
 ```bash
 docker build -t oleg-telegram-bot .

@@ -2,7 +2,7 @@ import logging
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 from smart_home import control_device
-from secrets import TELEGRAM_TOKEN, SMART_HOME_PASSWORD, DEEPSEEK_API_KEY
+from config_secrets import TELEGRAM_TOKEN, SMART_HOME_PASSWORD, DEEPSEEK_API_KEY
 from functions import (
     my_timer, time_kem, prank, what_weather, what_dey,
     print_heart, currency, calculation_materials
@@ -10,6 +10,8 @@ from functions import (
 import config
 import aiohttp
 import asyncio
+import json
+from datetime import datetime
 
 
 # Настройка логирования
@@ -19,8 +21,27 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+
 # Словарь для хранения авторизованных пользователей
 authorized_users = {}
+
+
+# Файл для статистики
+STATS_FILE = "/tmp/stats.json"
+
+def update_stats():
+    """Обновляет статистику сообщений"""
+    stats = {"total_messages": 0, "last_message_time": None}
+    try:
+        with open(STATS_FILE, "r") as f:
+            stats = json.load(f)
+    except:
+        pass
+    stats["total_messages"] += 1
+    stats["last_message_time"] = datetime.now().isoformat()
+    with open(STATS_FILE, "w") as f:
+        json.dump(stats, f)
+
 
 # словарь для хранения команд
 COMMANDS = {
@@ -190,6 +211,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             is_known_command = True
             break
 
+    # Обновляем статистику
+    update_stats()
     logger.info(f"Пользователь {user_id}: {user_text}")
 
     # Если это команда умного дома и пользователь НЕ авторизован

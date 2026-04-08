@@ -1,5 +1,5 @@
 import config
-from secrets import YANDEX_TOKEN
+from config_secrets import YANDEX_TOKEN
 from models.yandex_smart_home import YandexSmartHome
 
 
