@@ -22,6 +22,7 @@ def control_yandex_device(device_id: str, action: str) -> str:
     if status == 200:
         result = "включено" if action == "on" else "выключено"
         return f"Устройство {result}"
+
     else:
         return f"Ошибка: {response}"
 

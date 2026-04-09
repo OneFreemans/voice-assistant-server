@@ -32,6 +32,7 @@ class YandexSmartHome:
                 return response.json()
             except requests.JSONDecodeError:
                 return {"error": "Не JSON", "text": response.text}
+
         else:
             return {"error": f"HTTP {response.status_code}", "text": response.text}
 

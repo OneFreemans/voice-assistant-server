@@ -1,5 +1,6 @@
 from typing import Union
 
+
 def _format(count: Union[int, str], one: str, few: str, many: str) -> str:
     """
     Базовая функция для склонения слов по правилам русского языка.
@@ -22,8 +23,10 @@ def _format(count: Union[int, str], one: str, few: str, many: str) -> str:
     last_digit = int(str(count)[-1])
     if last_digit == 1:
         return one
+
     if 2 <= last_digit <= 4:
         return few
+
     return many
 
 

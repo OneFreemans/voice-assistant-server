@@ -29,6 +29,7 @@ authorized_users = {}
 # Файл для статистики
 STATS_FILE = "/tmp/stats.json"
 
+
 def update_stats():
     """Обновляет статистику сообщений"""
     stats = {"total_messages": 0, "last_message_time": None}
@@ -115,12 +116,16 @@ def process_command_text(text: str, update: Update = None, context: ContextTypes
 
         if time_unit in config.MINUTE_FORMATS:
             seconds = int(time_value) * 60
+
         elif time_unit in config.HOUR_FORMATS:
             seconds = int(time_value) * 60 * 60
+
         elif time_unit in config.SECOND_FORMATS:
             seconds = int(time_value)
+
             if seconds < 10:
                 return f"❌ Минимум 10 секунд."
+
         else:
             return f"❌ Неизвестный формат: {time_unit}"
 
@@ -145,11 +150,14 @@ def process_command_text(text: str, update: Update = None, context: ContextTypes
     trigger = text_split[0]
     if trigger in COMMANDS:
         func, min_args, need_timer = COMMANDS[trigger]
+
         if len(text_split) > min_args:
             if min_args == 1:
                 return func(text_split[1])
+
             elif min_args == 2:
                 return func(text_split[1], text_split[2])
+
             else:
                 return func()
 
@@ -189,6 +197,7 @@ async def handle_auth(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     if password == SMART_HOME_PASSWORD:
         authorized_users[user_id] = True
         await update.message.reply_text("✅ Доступ к умному дому разрешён.")
+
     else:
         await update.message.reply_text("❌ Неверный пароль.")
 
